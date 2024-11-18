@@ -2,35 +2,27 @@ node {
     def app
 
     stage('Clone repository') {
+      
+
         checkout scm
     }
 
     stage('Update GIT') {
-        script {
-            // Catch errors and mark stage as failed but continue pipeline execution
-            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                // Use SSH credentials stored in Jenkins
-                sshagent(['gitlogin']) { // Replace with your Jenkins credential ID
-                    sh "git config user.email busc9999@gmail.com"
-                    sh "git config user.name budaysagar"
-                    
-                    // Display current deployment.yaml for debugging
-                    sh "cat deployment.yaml"
-
-                    // Update deployment.yaml with the new Docker tag
-                    sh "sed -i 's+budaysagar/test.*budaysagar/test:${DOCKERTAG}+g' deployment.yaml"
-                    
-                    // Show updated file for verification
-                    sh "cat deployment.yaml"
-
-                    // Add and commit the changes
-                    sh "git add deployment.yaml"
-                    sh "git commit -m 'Updated manifest by Jenkins Job: ${env.BUILD_NUMBER}' || echo 'No changes to commit'"
-                    
-                    // Push changes to the main branch using SSH URL
-                    sh "git push git@github.com:budaysagar/kubernetesmanifest.git HEAD:main"
-                }
-            }
-        }
+            script {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    withCredentials([usernamePassword(credentialsId: 'github', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        //def encodedPassword = URLEncoder.encode("$GIT_PASSWORD",'UTF-8')
+                        sh "git config user.email busc9999@gmail.com"
+                        sh "git config user.name budaysagar"
+                        //sh "git switch master"
+                        sh "cat deployment.yaml"
+                        sh "sed -i 's+budaysagar/test.*+budaysagar/test:${DOCKERTAG}+g' deployment.yaml"
+                        sh "cat deployment.yaml"
+                        sh "git add ."
+                        sh "git commit -m 'Done by Jenkins Job changemanifest: ${env.BUILD_NUMBER}'"
+                        sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${GIT_USERNAME}/kubernetesmanifest.git HEAD:main"
+      }
     }
+  }
+}
 }
